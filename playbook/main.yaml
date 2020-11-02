@@ -1,0 +1,78 @@
+---
+- name: Install coredns things
+  hosts: all
+
+  tasks:
+    - name: Fetch the variables from var file
+      include_vars:
+        file: ../vars/main.yml
+
+    - name: download the latest binary
+      unarchive:
+        src: https://github.com/coredns/coredns/releases/download/v{{ version }}/coredns_{{ version }}_linux_amd64.tgz
+        dest: /usr/local/bin/
+        mode: '0755'
+        remote_src: yes
+
+    - name: create the coredns working directory
+      file:
+        state: directory
+        path: /var/lib/coredns
+        mode: '0755'
+
+    - name: create coredns user
+      user:
+        name: coredns
+        comment: coredns unprivd user
+        home: /var/lib/coredns
+        system: true
+
+    - name: put the coredns.service in the correct place
+      template:
+        src: ../templates/coredns.service.j2
+        dest: /etc/systemd/system/coredns.service
+        owner: root
+        group: root
+        mode: 0644
+
+    - name: create the coredns configuration directory
+      file:
+        state: directory
+        path: /etc/coredns/
+        mode: '0755'
+
+    - name: put the coredns Corefile in the correct place
+      template:
+        src: ../templates/Corefile.j2
+        dest: /etc/coredns/Corefile
+        owner: root
+        group: root
+        mode: 0755
+
+    - name: put the coredns home.hosts in the correct place
+      template:
+        src: ../templates/home.hosts.j2
+        dest: /etc/coredns/home.hosts
+        owner: root
+        group: root
+        mode: 0755
+
+    - name: reload the systemd daemon
+      shell:
+        cmd: systemctl daemon-reload
+
+    - name: stop and disable firewall
+      service:
+        name: firewalld
+        state: stopped
+        enabled: no
+      when:
+        ansible_facts['os_family'] == "RedHat"
+
+    - name: start up chronyd and enable
+      service:
+        name: coredns
+        state: restarted
+        enabled: yes
+      when:
+        ansible_facts['os_family'] == "RedHat"

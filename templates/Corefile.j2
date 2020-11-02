@@ -1,0 +1,12 @@
+.:5300 {
+    cache 3600
+    hosts /etc/coredns/home.hosts {
+       fallthrough
+    }
+    forward . tls://1.1.1.1 tls://1.0.0.1 {
+       policy random
+       tls_servername cloudflare-dns.com
+       health_check 5s
+    }
+    errors
+}
